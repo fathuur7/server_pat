@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.log
+
+# HLS working directories (video uploads & generated segments)
+uploads/
+streams/
+
+data-vidio/

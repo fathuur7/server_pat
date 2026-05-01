@@ -1,0 +1,142 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+} 
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(user)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  videos    Video[]
+  likes     EpisodeLike[]
+  comments  Comment[]
+  savedVideos SavedVideo[]
+}
+
+enum Role {
+  user
+  content_creator  
+}
+
+// ── Video Series Status ────────────────────────────────────────────────────────
+enum VideoStatus {
+  DRAFT
+  ONGOING
+  COMPLETED
+}
+
+// ── Episode Processing Status ──────────────────────────────────────────────────
+enum EpisodeStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ── Video (Series Container) ───────────────────────────────────────────────────
+model Video {
+  id           String      @id @default(uuid())
+  title        String
+  description  String?
+  thumbnailUrl String?
+  genres       Genre[]
+  status       VideoStatus @default(DRAFT)
+  views        Int         @default(0) // Accumulated views from all episodes
+  likes        Int         @default(0)
+  comments     Comment[]
+
+  authorId     String
+  author       User        @relation(fields: [authorId], references: [id])
+  episodes     Episode[]
+  savedBy      SavedVideo[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+// ── Genre ──────────────────────────────────────────────────────────────────────
+model Genre {
+  id    String  @id @default(uuid())
+  name  String  @unique
+  videos Video[]
+}
+
+// ── Episode ────────────────────────────────────────────────────────────────────
+model Episode {
+  id            String        @id @default(uuid())
+  episodeNumber Int
+  title         String?
+  description   String?
+  thumbnailUrl  String?
+  hlsUrl        String?
+  status        EpisodeStatus @default(PROCESSING)
+  duration      Int?          // seconds
+  views         Int           @default(0)
+  likes         Int           @default(0)
+
+  videoId       String
+  video         Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  episodeViews  EpisodeView[]
+  episodeLikes  EpisodeLike[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([videoId, episodeNumber]) // No duplicate episode numbers per series
+}
+
+// ── Like (1 per user per episode) ────────────────────────────────────────────────
+model EpisodeLike {
+  id        String   @id @default(uuid())
+  userId    String
+  episodeId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, episodeId])
+}
+
+// ── View (1 per IP per episode) ────────────────────────────────────────────────
+model EpisodeView {
+  id        String   @id @default(uuid())
+  episodeId String
+  ipAddress String
+  createdAt DateTime @default(now())
+
+  episode Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([episodeId, ipAddress])
+}
+
+// ── Comment ───────────────────────────────────────────────────────────────────
+model Comment {
+  id        String   @id @default(uuid())
+  text      String
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+}
+
+// ── SavedVideo (Vault / Watchlist) ─────────────────────────────────────────────
+model SavedVideo {
+  id        String   @id @default(uuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+}
