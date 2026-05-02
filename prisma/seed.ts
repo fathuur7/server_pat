@@ -37,7 +37,7 @@ async function createVideo(
       likes,
       status,
       authorId,
-      genres: { connect: genres.map(g => ({ id: g.id })) },
+      genres: { connect: genres.map((g: any) => ({ id: g.id })) },
     },
   });
   console.log(`  ✅ Created video: ${video.title}`);
